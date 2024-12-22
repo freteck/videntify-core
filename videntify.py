@@ -6,6 +6,8 @@ import tkinter as tk
 from PIL import Image, ImageFilter, ImageTk
 import io, requests
 
+SILENCE_ALBUM_ART_URL = "https://i.ibb.co/72J3zjF/silent.png"
+
 shazam = Shazam()
 
 root = tk.Tk()
@@ -43,7 +45,7 @@ def update_cover_art(cover_art_url):
   canvas.itemconfig(album_cover_art_image, image=tk_bg)
 
 
-update_cover_art("https://i.ibb.co/72J3zjF/silent.png")
+update_cover_art(SILENCE_ALBUM_ART_URL)
 
 canvas.pack()
 
@@ -143,6 +145,11 @@ def identify_song():
         pass
     else: 
       print("Song Not Detected")
+      song = "Silence 😴"
+      album_title = "Play a record to begin recognition"
+      artist = ""
+      draw_text()
+      update_cover_art(SILENCE_ALBUM_ART_URL)
   else:
     init_complete += 1
   root.after(100, identify_song)
