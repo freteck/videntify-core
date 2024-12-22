@@ -6,8 +6,9 @@ import tkinter as tk
 from PIL import Image, ImageFilter, ImageTk
 import io, requests
 
-root = tk.Tk()
 shazam = Shazam()
+
+root = tk.Tk()
 init_complete = 0
 
 
@@ -46,25 +47,55 @@ update_cover_art("https://i.ibb.co/72J3zjF/silent.png")
 
 canvas.pack()
 
+text_x_offset = 40 + album_art_size[0] + 40
+text_y_offset = 300
+shadow_offset = 4
+text_y_margin = 0
 
-y_offset = (root.winfo_height() - album_art_size[1])/2
+y_offset = ((root.winfo_height() - album_art_size[1])/2) + 40
 
 image_label.place(x=40, y = y_offset)
 
-text_x_offset = 40 + album_art_size[0] + 40
-shadow_offset = 4
+# Globals
+song_label_shadow = None
+song_label = None
+album_label_shadow = None
+album_label = None
+artist_label_shadow = None
+artist_label = None
 
-# draw text
-song_label_shadow = canvas.create_text(text_x_offset + shadow_offset, 261 + shadow_offset, text=song, font="calibri 100 bold", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
-song_label = canvas.create_text(text_x_offset, 261, text=song, font="calibri 100 bold", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+def draw_text():
+  global song
+  global album_title
+  global artist
+  global song_label_shadow 
+  global song_label
+  global album_label_shadow
+  global album_label
+  global artist_label_shadow
+  global artist_label
 
-album_label_shadow = canvas.create_text(text_x_offset + shadow_offset, 400 + shadow_offset, text=album_title, font="calibri 40 bold", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
-album_label = canvas.create_text(text_x_offset, 400, text=album_title, font="calibri 40 bold", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  text_items = [song_label_shadow, album_label_shadow, song_label, album_label, artist_label_shadow, artist_label]
+  for item in text_items:
+    canvas.delete(item)
+  
+  adj_song_height = text_y_offset + (40 * (len(song) // 16))
 
-artist_label_shadow = canvas.create_text(text_x_offset + shadow_offset, 460 + shadow_offset, text=artist, font="calibri 40 italic", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
-artist_label = canvas.create_text(text_x_offset, 460, text=artist, font="calibri 40 italic", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  canvas.create_text(40 + shadow_offset, 100 + shadow_offset, text="Now Playing:", font="calibri 70 bold", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  canvas.create_text(40, 100, text="Now Playing:", font="calibri 70 bold", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
 
-def record_audio(duration=5, sample_rate=44100, output_path="temp_recording.mp3"):
+  song_label_shadow = canvas.create_text(text_x_offset + shadow_offset, adj_song_height + shadow_offset, text=song, font="calibri 100 bold", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  song_label = canvas.create_text(text_x_offset, adj_song_height, text=song, font="calibri 100 bold", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  song_title_height = canvas.bbox(song_label)[3] - canvas.bbox(song_label)[1]
+
+  album_label_shadow = canvas.create_text(text_x_offset + shadow_offset, text_y_offset + shadow_offset + song_title_height + text_y_margin, text=album_title, font="calibri 40 bold", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  album_label = canvas.create_text(text_x_offset, text_y_offset + song_title_height + text_y_margin, text=album_title, font="calibri 40 bold", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  album_title_height = canvas.bbox(album_label)[3] - canvas.bbox(album_label)[1]
+
+  artist_label_shadow = canvas.create_text(text_x_offset + shadow_offset, text_y_offset + shadow_offset + song_title_height + album_title_height + 2*text_y_margin, text=artist, font="calibri 40 italic", fill="black", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+  artist_label = canvas.create_text(text_x_offset, text_y_offset + song_title_height + album_title_height + 2*text_y_margin, text=artist, font="calibri 40 italic", fill="white", anchor="w", width=root.winfo_width() - text_x_offset - 40)
+
+def record_audio(duration=5, sample_rate=44100):
   audio_data = sd.rec(int(sample_rate*duration), samplerate=sample_rate, channels=1, dtype='int16')
   sd.wait()
   audio_segment = AudioSegment(
@@ -93,18 +124,23 @@ def identify_song():
     identification_data = asyncio.run(shazam.recognize(audio))
     if len(identification_data["matches"]) > 0:
       match = identification_data["track"]
-      print(match)
       print(match["title"] + " - " + match["subtitle"])
       song = match["title"]
-      canvas.itemconfig(song_label, text=match["title"])
-      canvas.itemconfig(song_label_shadow, text=match["title"])
+      try:
+        album_title = match["sections"][0]["metadata"][0]["text"]
+        artist = match["subtitle"]
+        canvas.itemconfig(song_label, text=song)
+        canvas.itemconfig(song_label_shadow, text=song)
 
-      canvas.itemconfig(album_label, text=match["sections"][0]["metadata"][0]["text"])
-      canvas.itemconfig(album_label_shadow, text=match["sections"][0]["metadata"][0]["text"])
+        canvas.itemconfig(album_label, text=album_title)
+        canvas.itemconfig(album_label_shadow, text=album_title)
 
-      canvas.itemconfig(artist_label, text=match["subtitle"])
-      canvas.itemconfig(artist_label_shadow, text=match["subtitle"])
-      update_cover_art(match["images"]["coverart"])
+        canvas.itemconfig(artist_label, text=artist)
+        canvas.itemconfig(artist_label_shadow, text=artist)
+        draw_text()
+        update_cover_art(match["images"]["coverart"])
+      except:
+        pass
     else: 
       print("Song Not Detected")
   else:
@@ -114,6 +150,6 @@ def identify_song():
 
 # Main thread
 if __name__ == "__main__":
-    # init_gui()
-    identify_song()
-    root.mainloop()
+  draw_text()
+  identify_song()
+  root.mainloop()
